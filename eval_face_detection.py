@@ -29,8 +29,7 @@ with open('tf_pose_estimation.txt', "w") as f:
                              upsample_size=4)
         f.write(image_name + '\n')
         img_h, img_w = image.shape[:2]
-        faces = [human.get_face_box(img_w, img_h) for human in humans]
-        faces = [face for face in faces if face is not None]
+        faces = [face for face in faces if face is not None and face['h'] > 25]
         f.write(str(len(faces)) + '\n')
         for face in faces:
             f.write('{} {} {} {} {}\n'.format(face['x'], face['y'], face['w'], face['h'], face['confidence']))

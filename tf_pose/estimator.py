@@ -413,7 +413,8 @@ class TfPoseEstimator:
             if face is not None:
                 pt1 = (face['x'],face['y'])
                 pt2 = (face['x']+face['w'], face['y']+face['h'])
-                cv2.rectangle(npimg,pt1,pt2,(0,0,255),3)
+                if face['h'] >= 30:
+                    cv2.rectangle(npimg,pt1,pt2,(0,0,255),3)
         return npimg
 
     def _get_scaled_img(self, npimg, scale):
