@@ -22,7 +22,7 @@ i = random.randint(0,len(files_grabbed))
 path = 'originalPics/'+files_grabbed[i]+'.jpg'
 
 with open('tf_pose_estimation.txt', "w") as f:
-    for image_name in log_progress(files_grabbed):
+    for image_name in files_grabbed[:10]:
         path = 'originalPics/' + image_name + '.jpg'
         image = common.read_imgfile(path, None, None)
         humans = e.inference(image, resize_to_default=(432 > 0 and 368 > 0),

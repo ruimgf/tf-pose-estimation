@@ -95,9 +95,12 @@ class Human:
         _LEye = CocoPart.LEye.value
         _REar = CocoPart.REar.value
         _LEar = CocoPart.LEar.value
+        _ValidParts = [_NOSE, _NECK, _REye, _LEye, _REar, _LEar]
 
         _THRESHOLD_PART_CONFIDENCE = 0.2
         parts = [part for idx, part in self.body_parts.items() if part.score > _THRESHOLD_PART_CONFIDENCE]
+
+        valid_parts_scores = [part.score for part in parts if part.part_idx in _ValidParts]
 
         is_nose, part_nose = _include_part(parts, _NOSE)
         if not is_nose:
@@ -153,12 +156,16 @@ class Human:
             return {"x": _round((x + x2) / 2),
                     "y": _round((y + y2) / 2),
                     "w": _round(x2 - x),
-                    "h": _round(y2 - y)}
+                    "h": _round(y2 - y),
+                    "confidence": np.mean(valid_parts_scores)
+                    }
         else:
             return {"x": _round(x),
                     "y": _round(y),
                     "w": _round(x2 - x),
-                    "h": _round(y2 - y)}
+                    "h": _round(y2 - y),
+                    "confidence": np.mean(valid_parts_scores)
+                    }
 
     def get_upper_body_box(self, img_w, img_h):
         """
@@ -401,7 +408,12 @@ class TfPoseEstimator:
 
                 # npimg = cv2.line(npimg, centers[pair[0]], centers[pair[1]], common.CocoColors[pair_order], 3)
                 cv2.line(npimg, centers[pair[0]], centers[pair[1]], common.CocoColors[pair_order], 3)
+            face = human.get_face_box(image_w,image_h,mode=1)
 
+            if face is not None:
+                pt1 = (face['x'],face['y'])
+                pt2 = (face['x']+face['w'], face['y']+face['h'])
+                cv2.rectangle(npimg,pt1,pt2,(0,0,255),3)
         return npimg
 
     def _get_scaled_img(self, npimg, scale):
