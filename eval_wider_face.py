@@ -13,23 +13,35 @@ import glob
 import os
 import random
 
-e = TfPoseEstimator(get_graph_path('mobilenet_thin'), target_size=(432, 368))
+base_path = '/home/ruimgf/datasets/WIDER_test/images'
+results_path = 'resultsWider'
+
+#e = TfPoseEstimator(get_graph_path('mobilenet_thin'), target_size=(432, 368))
 # estimate human poses from a single image !
 with open('paths_wider.txt') as f:
     files_grabbed = [line.rstrip('\n') for line in f]
 
-print(files_grabbed)
+if not os.path.isdir(results_path):
+	os.mkdir(results_path)
 sys.exit()
-with open('tf_pose_estimation.txt', "w") as f:
-    for image_name in files_grabbed:
-        path = 'originalPics/' + image_name + '.jpg'
-        image = common.read_imgfile(path, None, None)
-        humans = e.inference(image, resize_to_default=(432 > 0 and 368 > 0),
-                             upsample_size=4)
-        f.write(image_name + '\n')
-        img_h, img_w = image.shape[:2]
-        faces = [human.get_face_box(img_w, img_h, mode=1) for human in humans]
-        faces = [face for face in faces if face is not None and face['h'] > 25]
-        f.write(str(len(faces)) + '\n')
-        for face in faces:
-            f.write('{} {} {} {} {}\n'.format(face['x'], face['y'], face['w'], face['h'], face['confidence']))
+
+for folder in files_grabbed:
+	if not os.path.isdir(os.path.join(results_path,folder)):
+    	os.mkdir(os.path.join(results_path,folder))
+
+	for image_name in os.listdir(os.path.join(base_path,folder))
+	    path = os.path.join(base_path,folder,image_name)
+
+	    image = common.read_imgfile(path, None, None)
+	    humans = e.inference(image, resize_to_default=(432 > 0 and 368 > 0),
+	                         upsample_size=4)
+	    
+	    
+	    with open(os.path.join(results_path,folder,image_name.split('.')[0] + '.txt'))
+	    	f.write(image_name.split('.')[0] + '\n')
+	    	img_h, img_w = image.shape[:2]
+	   		faces = [human.get_face_box(img_w, img_h, mode=1) for human in humans]
+	    	faces = [face for face in faces if face is not None and face['h'] > 25]
+	    	f.write(str(len(faces)) + '\n')
+	    	for face in faces:
+	            f.write('{} {} {} {} {}\n'.format(face['x'], face['y'], face['w'], face['h'], face['confidence']))
