@@ -186,6 +186,7 @@ class Human:
         parts = [part for idx, part in self.body_parts.items() if part.score > _THRESHOLD_PART_CONFIDENCE]
         part_coords = [(img_w * part.x, img_h * part.y) for part in parts if
                        part.part_idx in [0, 1, 2, 5, 8, 11, 14, 15, 16, 17]]
+        valid_parts_scores = [part.score for part in parts if part.part_idx in [0, 1, 2, 5, 8, 11, 14, 15, 16, 17]]
 
         if len(part_coords) < 5:
             return None
@@ -234,10 +235,90 @@ class Human:
 
         if _round(x2 - x) == 0.0 or _round(y2 - y) == 0.0:
             return None
-        return {"x": _round((x + x2) / 2),
-                "y": _round((y + y2) / 2),
+        return {"x": _round(x),
+                "y": _round(y),
                 "w": _round(x2 - x),
                 "h": _round(y2 - y)}
+
+    def get_full_body_box(self, img_w, img_h):
+        """
+        Get Upper body box compared to img size (w, h)
+        :param img_w:
+        :param img_h:
+        :return:
+        """
+
+        if not (img_w > 0 and img_h > 0):
+            raise Exception("img size should be positive")
+
+        _NOSE = CocoPart.Nose.value
+        _NECK = CocoPart.Neck.value
+        _RSHOULDER = CocoPart.RShoulder.value
+        _LSHOULDER = CocoPart.LShoulder.value
+        _THRESHOLD_PART_CONFIDENCE = 0.00
+
+
+
+        parts = [part for idx, part in self.body_parts.items() if part.score > _THRESHOLD_PART_CONFIDENCE]
+        part_coords = [(img_w * part.x, img_h * part.y) for part in parts if
+                       part.part_idx in [0, 1, 2,5,8,9,10,11,12,13,14, 15, 16]]
+
+        valid_parts_scores = [part.score for part in parts if part.part_idx in [0, 1, 2, 5, 8, 11, 14, 15, 16, 17]]
+
+        if len(part_coords) < 2:
+            return None
+
+        # Initial Bounding Box
+        x = min([part[0] for part in part_coords])
+        y = min([part[1] for part in part_coords])
+        x2 = max([part[0] for part in part_coords])
+        y2 = max([part[1] for part in part_coords])
+
+        # # ------ Adjust heuristically +
+        # if face points are detcted, adjust y value
+
+        is_nose, part_nose = _include_part(parts, _NOSE)
+        is_neck, part_neck = _include_part(parts, _NECK)
+        torso_height = 0
+        if is_nose and is_neck:
+            y -= (part_neck.y * img_h - y) * 0.8
+            torso_height = max(0, (part_neck.y - part_nose.y) * img_h * 2.5)
+        #
+        # # by using shoulder position, adjust width
+        is_rshoulder, part_rshoulder = _include_part(parts, _RSHOULDER)
+        is_lshoulder, part_lshoulder = _include_part(parts, _LSHOULDER)
+        if is_rshoulder and is_lshoulder:
+            half_w = x2 - x
+            dx = half_w * 0.15
+            x -= dx
+            x2 += dx
+        elif is_neck:
+            if is_lshoulder and not is_rshoulder:
+                half_w = abs(part_lshoulder.x - part_neck.x) * img_w * 1.15
+                x = min(part_neck.x * img_w - half_w, x)
+                x2 = max(part_neck.x * img_w + half_w, x2)
+            elif not is_lshoulder and is_rshoulder:
+                half_w = abs(part_rshoulder.x - part_neck.x) * img_w * 1.15
+                x = min(part_neck.x * img_w - half_w, x)
+                x2 = max(part_neck.x * img_w + half_w, x2)
+
+        # ------ Adjust heuristically -
+
+        # fit into the image frame
+        x = max(0, x)
+        y = max(0, y)
+        x2 = min(img_w - x, x2 - x) + x
+        y2 = min(img_h - y, y2 - y) + y
+
+        if _round(x2 - x) == 0.0 or _round(y2 - y) == 0.0:
+            return None
+        return {"x": _round(x),
+                "y": _round(y),
+                "w": _round(x2 - x),
+                "h": _round(y2 - y),
+                "confidence": np.sum(valid_parts_scores)
+                }
+
 
     def __str__(self):
         return ' '.join([str(x) for x in self.body_parts.values()])
@@ -408,7 +489,7 @@ class TfPoseEstimator:
 
                 # npimg = cv2.line(npimg, centers[pair[0]], centers[pair[1]], common.CocoColors[pair_order], 3)
                 cv2.line(npimg, centers[pair[0]], centers[pair[1]], common.CocoColors[pair_order], 3)
-            face = human.get_face_box(image_w,image_h,mode=1)
+            face = human.get_full_body_box(image_w,image_h)
 
             if face is not None:
                 pt1 = (face['x'],face['y'])
